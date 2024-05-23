@@ -1,3 +1,4 @@
+import 'package:FLUTTER_DATABASE_/Widgets/confirmation_dialog.dart';
 import 'package:FLUTTER_DATABASE_/pages/todo_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -35,7 +36,7 @@ class _HomePageState extends State<HomePage> {
         'description': description,
         'createdAt': Timestamp.now(),
         'updatedAt': Timestamp.now(),
-        'authorId':user?.uid
+        'authorId': user?.uid
       });
     } catch (e) {
       print('error $e');
@@ -43,7 +44,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<List<Map<String, dynamic>>> getTodos() async {
-    final docsRef = await todoCollectionRef.where('authorId',isEqualTo: user?.uid.toString()).get();
+    final docsRef = await todoCollectionRef
+        .where('authorId', isEqualTo: user?.uid.toString())
+        .get();
     return docsRef.docs.map((doc) => {...doc.data(), 'id': doc.id}).toList();
   }
 
@@ -107,6 +110,11 @@ class _HomePageState extends State<HomePage> {
                           title: titleController.text,
                           description: descriptionController.text);
                     } else {
+                      showDialog(
+                          context: context,
+                          builder: (context) => const ConfirmationBox(
+                                actions: 'Update',
+                              ));
                       updateTodo(id,
                           title: titleController.text,
                           description: descriptionController.text);
@@ -124,6 +132,7 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
@@ -132,6 +141,7 @@ class _HomePageState extends State<HomePage> {
             'Todo',
             style: TextStyle(color: Colors.amber),
           ),
+          centerTitle: true,
         ),
         body: Center(
           child: isLoading
@@ -156,9 +166,19 @@ class _HomePageState extends State<HomePage> {
                                 icon: const Icon(Icons.edit)),
                             IconButton(
                               onPressed: () async {
-                                toggleLoading();
-                                await deleteTodo(todo['id']);
-                                getData();
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => const ConfirmationBox(
+                                    actions: 'Delete',
+                                  ),
+                                ).then((value) async {
+                                  print(value);
+                                  if (value == true) {
+                                    toggleLoading();
+                                    await deleteTodo(todo['id']);
+                                    getData();
+                                  }
+                                });
                               },
                               icon: const Icon(Icons.delete),
                               color: Colors.red,
@@ -172,9 +192,20 @@ class _HomePageState extends State<HomePage> {
                                   builder: (context) => TodoViewer(
                                         todo: todo,
                                         onDelete: (id) async {
-                                          toggleLoading();
-                                          await deleteTodo(id);
-                                          getData();
+                                          showDialog(
+                                            context: context,
+                                            builder: (context) =>
+                                                const ConfirmationBox(
+                                              actions: 'Delete',
+                                            ),
+                                          ).then((value) async {
+                                            print(value);
+                                            if (value == true) {
+                                              toggleLoading();
+                                              await deleteTodo(todo['id']);
+                                              getData();
+                                            }
+                                          });
                                         },
                                       )));
                         });

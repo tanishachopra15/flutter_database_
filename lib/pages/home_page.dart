@@ -1,5 +1,6 @@
 import 'package:FLUTTER_DATABASE_/pages/todo_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class HomePage extends StatefulWidget {
@@ -13,9 +14,10 @@ class _HomePageState extends State<HomePage> {
   bool isLoading = true;
   List<Map<String, dynamic>> todos = [];
   final TextEditingController titleController = TextEditingController();
-  final TextEditingController descController = TextEditingController();
+  final TextEditingController descriptionController = TextEditingController();
 
-  final todoCollectionRef = FirebaseFirestore.instance.collection("todos");
+  final todoCollectionRef = FirebaseFirestore.instance.collection('todos');
+  final user = FirebaseAuth.instance.currentUser;
 
   void toggleLoading() {
     setState(() {
@@ -29,41 +31,37 @@ class _HomePageState extends State<HomePage> {
   }) async {
     try {
       await todoCollectionRef.add({
-        "title": title,
-        "description": description,
-        "createdAt": Timestamp.now(),
-        "updatedAt": Timestamp.now(),
+        'title': title,
+        'description': description,
+        'createdAt': Timestamp.now(),
+        'updatedAt': Timestamp.now(),
+        'authorId':user?.uid
       });
     } catch (e) {
-      print("Error: $e");
+      print('error $e');
     }
   }
 
   Future<List<Map<String, dynamic>>> getTodos() async {
-    final docsRef = await todoCollectionRef.get();
-    return docsRef.docs.map((doc) => {...doc.data(), "id": doc.id}).toList();
+    final docsRef = await todoCollectionRef.where('authorId',isEqualTo: user?.uid.toString()).get();
+    return docsRef.docs.map((doc) => {...doc.data(), 'id': doc.id}).toList();
   }
 
   Future<Map<String, dynamic>?> getTodo(String id) async {
-    final docRef = await todoCollectionRef.doc(id).get();
-    return docRef.data();
+    final docsRef = await todoCollectionRef.doc(id).get();
+    return docsRef.data();
   }
 
-  Future<void> updateTodo(
-    String id, {
-    String? title,
-    String? description,
-  }) async {
-    return todoCollectionRef.doc(id).update(
-      {
-        if (title != null) "title": title,
-        if (description != null) "description": description,
-      },
-    );
+  Future<void> updateTodo(String id,
+      {String? title, String? description}) async {
+    await todoCollectionRef.doc(id).update({
+      if (title != null) 'title': title,
+      if (description != null) 'description': description,
+    });
   }
 
   Future<void> deleteTodo(String id) async {
-    return await todoCollectionRef.doc(id).delete();
+    await todoCollectionRef.doc(id).delete();
   }
 
   @override
@@ -79,67 +77,63 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void openTodoBox({String? docID}) {
+  void todoBox({String? id}) {
     showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        // backgroundColor: Colors.transparent,
-        content: SizedBox(
-          height: 100,
-          child: Column(
-            children: <Widget>[
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(
-                  hintText: 'Enter Todo',
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            content: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                TextField(
+                  decoration: const InputDecoration(hintText: 'Enter Todo'),
+                  controller: titleController,
                 ),
-              ),
-              TextField(
-                controller: descController,
-                decoration: const InputDecoration(
-                  hintText: 'Enter Description',
+                TextField(
+                  decoration:
+                      const InputDecoration(hintText: 'Enter description'),
+                  controller: descriptionController,
                 ),
-              ),
+              ],
+            ),
+            actions: [
+              ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    toggleLoading();
+                    if (id == null) {
+                      await createTodo(
+                          title: titleController.text,
+                          description: descriptionController.text);
+                    } else {
+                      updateTodo(id,
+                          title: titleController.text,
+                          description: descriptionController.text);
+                    }
+                    getData();
+                    titleController.clear();
+                    descriptionController.clear();
+                  },
+                  child: Text('${id == null ? 'Add' : 'Update'} Todo'))
             ],
-          ),
-        ),
-        actions: [
-          Center(
-            child: ElevatedButton(
-                onPressed: () async {
-                  Navigator.of(context).pop();
-                  toggleLoading();
-                  if (docID == null) {
-                    await createTodo(
-                        title: titleController.text,
-                        description: descController.text);
-                  } else {
-                    await updateTodo(docID,
-                        title: titleController.text,
-                        description: descController.text);
-                  }
-                  getData();
-                  titleController.clear();
-                  descController.clear();
-                },
-                child: Text("${docID == null ? "Add" : "Update"} Todo")),
-          )
-        ],
-      ),
-    ).whenComplete(() {
+          );
+        }).whenComplete(() {
       titleController.clear();
-      descController.clear();
+      descriptionController.clear();
     });
   }
 
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 189, 172, 250),
-        title: const Text('Todo App'),
-      ),
-      body: Center(
+        appBar: AppBar(
+          backgroundColor: Colors.blue,
+          title: const Text(
+            'Todo',
+            style: TextStyle(color: Colors.amber),
+          ),
+        ),
+        body: Center(
           child: isLoading
               ? const CircularProgressIndicator()
               : ListView.builder(
@@ -147,56 +141,50 @@ class _HomePageState extends State<HomePage> {
                   itemBuilder: (context, index) {
                     final todo = todos[index];
                     return ListTile(
-                      title: Text(todo['title']),
-                      subtitle: Text(todo['description']),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            onPressed: () {
-                              titleController.text = todo['title'];
-                              descController.text = todo['description'];
-                              openTodoBox(docID: todo['id']);
-                            },
-                            icon: const Icon(
-                              Icons.edit,
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () async {
-                              toggleLoading();
-                              await deleteTodo(todo['id']);
-                              getData();
-                            },
-                            icon: const Icon(
-                              Icons.delete,
+                        title: Text(todo['title']),
+                        subtitle: Text(todo['description']),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                                onPressed: () {
+                                  titleController.text = todo['title'];
+                                  descriptionController.text =
+                                      todo['description'];
+                                  todoBox(id: todo['id']);
+                                },
+                                icon: const Icon(Icons.edit)),
+                            IconButton(
+                              onPressed: () async {
+                                toggleLoading();
+                                await deleteTodo(todo['id']);
+                                getData();
+                              },
+                              icon: const Icon(Icons.delete),
                               color: Colors.red,
                             ),
-                          ),
-                        ],
-                      ),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => TodoViewer(
-                                todo: todo,
-                                onDelete: (String id) async {
-                                  toggleLoading();
-                                  await deleteTodo(id);
-                                  getData();
-                                }),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                )),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color.fromARGB(255, 189, 172, 250),
-        onPressed: openTodoBox,
-        child: const Icon(Icons.add),
-      ),
-    );
+                          ],
+                        ),
+                        onTap: () {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => TodoViewer(
+                                        todo: todo,
+                                        onDelete: (id) async {
+                                          toggleLoading();
+                                          await deleteTodo(id);
+                                          getData();
+                                        },
+                                      )));
+                        });
+                  }),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: todoBox,
+          child: const Icon(
+            Icons.add,
+          ),
+        ));
   }
 }

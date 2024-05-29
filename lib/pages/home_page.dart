@@ -1,5 +1,5 @@
 import 'package:FLUTTER_DATABASE_/Widgets/confirmation_dialog.dart';
-import 'package:FLUTTER_DATABASE_/pages/todo_page.dart';
+import 'package:FLUTTER_DATABASE_/pages/todo_mode.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -55,8 +55,8 @@ class _HomePageState extends State<HomePage> {
     return docsRef.data();
   }
 
-  Future<void> updateTodo(String id,
-      {String? title, String? description}) async {
+  Future<void> updateTodo(
+      {String? id, String? title, String? description}) async {
     await todoCollectionRef.doc(id).update({
       if (title != null) 'title': title,
       if (description != null) 'description': description,
@@ -80,57 +80,58 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void todoBox({String? id}) {
-    showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            content: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                TextField(
-                  decoration: const InputDecoration(hintText: 'Enter Todo'),
-                  controller: titleController,
-                ),
-                TextField(
-                  decoration:
-                      const InputDecoration(hintText: 'Enter description'),
-                  controller: descriptionController,
-                ),
-              ],
-            ),
-            actions: [
-              ElevatedButton(
-                  onPressed: () async {
-                    Navigator.pop(context);
-                    toggleLoading();
-                    if (id == null) {
-                      await createTodo(
-                          title: titleController.text,
-                          description: descriptionController.text);
-                    } else {
-                      showDialog(
-                          context: context,
-                          builder: (context) => const ConfirmationBox(
-                                actions: 'Update',
-                              ));
-                      updateTodo(id,
-                          title: titleController.text,
-                          description: descriptionController.text);
-                    }
-                    getData();
-                    titleController.clear();
-                    descriptionController.clear();
-                  },
-                  child: Text('${id == null ? 'Add' : 'Update'} Todo'))
-            ],
-          );
-        }).whenComplete(() {
-      titleController.clear();
-      descriptionController.clear();
-    });
-  }
+  // void todoBox({String? id}) {
+  //   showDialog(
+  //       context: context,
+  //       builder: (context) {
+  //         return AlertDialog(
+  //           content: Column(
+  //             mainAxisAlignment: MainAxisAlignment.center,
+  //             mainAxisSize: MainAxisSize.min,
+  //             children: <Widget>[
+  //               TextField(
+  //                 decoration: const InputDecoration(hintText: 'Enter Todo'),
+  //                 controller: titleController,
+  //               ),
+  //               TextField(
+  //                 decoration:
+  //                     const InputDecoration(hintText: 'Enter description'),
+  //                 controller: descriptionController,
+  //               ),
+  //             ],
+  //           ),
+  //           actions: [
+  //             ElevatedButton(
+  //                 onPressed: () async {
+  //                   Navigator.pop(context);
+  //                   toggleLoading();
+  //                   if (id == null) {
+  //                     await createTodo(
+  //                         title: titleController.text,
+  //                         description: descriptionController.text);
+  //                   } else {
+  //                     showDialog(
+  //                         context: context,
+  //                         builder: (context) => const ConfirmationBox(
+  //                               actions: 'Update',
+  //                             ));
+  //                     updateTodo(
+  //                         id: id,
+  //                         title: titleController.text,
+  //                         description: descriptionController.text);
+  //                   }
+  //                   getData();
+  //                   titleController.clear();
+  //                   descriptionController.clear();
+  //                 },
+  //                 child: Text('${id == null ? 'Add' : 'Update'} Todo'))
+  //           ],
+  //         );
+  //       }).whenComplete(() {
+  //     titleController.clear();
+  //     descriptionController.clear();
+  //   });
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -151,68 +152,94 @@ class _HomePageState extends State<HomePage> {
                   itemBuilder: (context, index) {
                     final todo = todos[index];
                     return ListTile(
-                        title: Text(todo['title']),
-                        subtitle: Text(todo['description']),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                                onPressed: () {
-                                  titleController.text = todo['title'];
-                                  descriptionController.text =
-                                      todo['description'];
-                                  todoBox(id: todo['id']);
-                                },
-                                icon: const Icon(Icons.edit)),
-                            IconButton(
-                              onPressed: () async {
-                                showDialog(
-                                  context: context,
-                                  builder: (context) => const ConfirmationBox(
-                                    actions: 'Delete',
+                      title: Text(todo['title']),
+                      subtitle: Text(todo['description']),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => TodoMode(
+                                      title: todo['title'],
+                                      description: todo['description'],
+                                      mode: Mode.Edit,
+                                      onAction: (titleController,
+                                          descriptionController) {
+                                        updateTodo(
+                                            id: todo['id'],
+                                            title: titleController,
+                                            description: descriptionController);
+                                        getData();
+                                      },
+                                    ),
                                   ),
-                                ).then((value) async {
-                                  print(value);
-                                  if (value == true) {
-                                    toggleLoading();
-                                    await deleteTodo(todo['id']);
-                                    getData();
-                                  }
-                                });
+                                );
                               },
-                              icon: const Icon(Icons.delete),
-                              color: Colors.red,
-                            ),
-                          ],
-                        ),
-                        onTap: () {
-                          Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => TodoViewer(
-                                        todo: todo,
-                                        onDelete: (id) async {
-                                          showDialog(
-                                            context: context,
-                                            builder: (context) =>
-                                                const ConfirmationBox(
-                                              actions: 'Delete',
-                                            ),
-                                          ).then((value) async {
-                                            print(value);
-                                            if (value == true) {
-                                              toggleLoading();
-                                              await deleteTodo(todo['id']);
-                                              getData();
-                                            }
-                                          });
-                                        },
-                                      )));
-                        });
+                              icon: const Icon(Icons.edit)),
+                          IconButton(
+                            onPressed: () async {
+                              showDialog(
+                                context: context,
+                                builder: (context) => const ConfirmationBox(
+                                  actions: 'Delete',
+                                ),
+                              ).then((value) async {
+                                print(value);
+                                if (value == true) {
+                                  toggleLoading();
+                                  await deleteTodo(todo['id']);
+                                  getData();
+                                }
+                              });
+                            },
+                            icon: const Icon(Icons.delete),
+                            color: Colors.red,
+                          ),
+                        ],
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => TodoMode(
+                                title: todo['title'],
+                                description: todo['description'],
+                                mode: Mode.View,
+                                onAction:
+                                    (titleController, descriptionController) {
+                                  updateTodo(
+                                      id: todo['id'],
+                                      title: titleController,
+                                      description: descriptionController);
+                                  getTodos();
+                                  getData();
+                                }),
+                          ),
+                        );
+                      },
+                    );
                   }),
         ),
         floatingActionButton: FloatingActionButton(
-          onPressed: todoBox,
+          onPressed: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TodoMode(
+                  mode: Mode.Add,
+                  onAction: (titleController, descriptionController) {
+                    createTodo(
+                        title: titleController,
+                        description: descriptionController);
+                    getData();
+                  },
+                ),
+              ),
+            );
+          },
           child: const Icon(
             Icons.add,
           ),

@@ -130,7 +130,7 @@ class _MyHomeState extends State<_MyHome> {
                 InkWell(
                   onTap: () {
                     Navigator.pushReplacement(context,
-                        MaterialPageRoute(builder: (context) => LoginPage()));
+                        MaterialPageRoute(builder: (context) => const LoginPage()));
                   },
                   child: const Text(' Log in',
                       style: TextStyle(color: Colors.red)),

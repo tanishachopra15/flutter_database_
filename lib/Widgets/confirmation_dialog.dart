@@ -6,8 +6,7 @@ class ConfirmationBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: AlertDialog(
+    return AlertDialog(
           content: Text(
             'Do you want to $actions ?',
             style: const TextStyle(fontSize: 20),
@@ -28,7 +27,6 @@ class ConfirmationBox extends StatelessWidget {
               },
               child: const Text('No', style: TextStyle(fontSize: 15)),
             ),
-          ]),
-    );
+          ]);
   }
 }

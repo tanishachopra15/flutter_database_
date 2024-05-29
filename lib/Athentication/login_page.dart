@@ -11,7 +11,6 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  
   bool passwordObscure = true;
   final _firebaseAuth = Authentication();
   final _email = TextEditingController();
@@ -24,6 +23,8 @@ class _LoginPageState extends State<LoginPage> {
     if (user != null) {
       Navigator.push(
           context, MaterialPageRoute(builder: (context) => const HomePage()));
+      _email.clear();
+      _password.clear();
     } else {
       print('error');
     }
@@ -74,18 +75,22 @@ class _LoginPageState extends State<LoginPage> {
                       obscureText: passwordObscure,
                       controller: _password,
                       decoration: InputDecoration(
-                          hintText: 'Enter your Password',
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10)),
-                          suffixIcon: IconButton(
-                              onPressed: () {
-                                setState(() {
-                                  passwordObscure = !passwordObscure;
-                                });
+                        hintText: 'Enter your Password',
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        suffixIcon: IconButton(
+                          onPressed: () {
+                            setState(
+                              () {
+                                passwordObscure = !passwordObscure;
                               },
-                              icon: Icon(passwordObscure
-                                  ? Icons.visibility_off
-                                  : Icons.visibility))),
+                            );
+                          },
+                          icon: Icon(passwordObscure
+                              ? Icons.visibility_off
+                              : Icons.visibility),
+                        ),
+                      ),
                       validator: (value) {
                         if (value!.isEmpty) {
                           return 'Please Enter your password';
@@ -101,8 +106,6 @@ class _LoginPageState extends State<LoginPage> {
                         onPressed: () {
                           if (_formKey.currentState!.validate()) {
                             _logIn(context);
-                            // _email.clear();
-                            // _password.clear();
                           }
                         },
                         child: const Text('Log In')),
